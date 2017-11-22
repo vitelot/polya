@@ -1,0 +1,85 @@
+body {
+  margin:0;
+  padding:0;
+  color: #000;
+  background: #a7a09a;
+}
+
+#wrapper {
+  width: 1020px;
+  margin:5px;
+}
+
+#header h1{
+  text-align: center;
+  font-family: 'Josefin Sans', sans-serif;
+}
+
+#description {
+  font-family: 'Indie Flower', cursive;
+}
+
+#simulation {
+  float:left;
+  background: url(texture-noise.png);
+  margin: 5px;
+  /* set in main.js
+  width: 800px;
+  height: 600px;*/
+}
+
+#sidebar {
+  margin-right: 1px;
+  float:right;
+  width: 200px;
+}
+
+#buttons {
+  margin: 1px;
+  text-align: center;
+  /*border-style: solid;
+  border-width: thin;*/
+}
+#graph {
+  margin: 1px;
+  background: #aaa;
+  /*height: 300px;*/
+  border-style: solid;
+  border-width: thin;
+}
+#stream {
+  margin: 1px;
+  background: #888;
+  /*height: 300px;*/
+  border-style: solid;
+  border-width: thin;
+}
+#buttons button {
+  width: 50%;
+  font-size: 14px;
+  border-radius: 5px;
+  outline: none;
+}
+#graph h1 {
+  font-size: 16px;
+  text-align: center;
+}
+#graph p {
+  padding-left: 1em;
+}
+
+#footer {
+  clear: both;
+  text-align: center;
+  font-size: 12px;
+}
+
+rect {
+  fill: none;
+  pointer-events: all;
+}
+
+.node {
+  /*fill: #000;*/
+  stroke: black;
+}

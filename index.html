@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Polya's urn with innovations</title>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="./main.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Indie+Flower|Josefin+Sans" rel="stylesheet">
+  <link type="text/css" rel="stylesheet" href="inno.css" />
+</head>
+
+<body>
+  <div id="wrapper">
+    <div id="header">
+      <h1>Polya's urn with innovations</h1>
+      <div id="description">
+        <p>
+          This visualisation represents the simplest form of the innovation model
+          introduced in
+          <a href="http://www.nature.com/srep/2014/140731/srep05890/full/srep05890.html">
+            Scientific Reports 4, 5890 (2014)</a>.<br>
+
+          An urn initially contains a red ball.
+          At each time step a ball is randomly extracted with equal probability from the urn.
+          Its color is registered in the stream, whose histogram is here represented as a pie chart.
+          If that color was never observed before, i.e. it is not yet present in the stream,
+          nu+1 balls with each a brand new color, are added into the urn thus building
+          the "adjacent possible".
+          Independently, rho exact copies of the extracted ball are added to the urn.<br>
+          The randomly chosen ball is the pulsing one; the balls with brand new colors
+          enter the scene from the right side of the simulation; the copies of the balls
+          with an already observed color enter from the left side.
+        </p>
+      </div>
+    </div>
+    <div id="simulation">
+    </div>
+    <div id="sidebar">
+      <div id="buttons">
+
+        <p><button id="pauseB">Pause</button></p>
+        <p>
+          <label for="rhoValue">
+                 rho =
+          </label>
+          <input type="number" min="1" max="6" step="1" value="2" id="rhoValue">
+        <!-- </p>
+        <p> -->
+          <label for="nuValue">
+                 nu =
+          </label>
+          <input type="number" min="-1" max="6" step="1" value="1" id="nuValue">
+        </p>
+        <p>
+          <label for="rateValue">
+                 rate =
+          </label>
+          <input type="number" min="200" max="2000" step="100" value="800" id="rateValue">
+        </p>
+        <p><button id="restartB">Restart</button></p>
+
+      </div>
+      <div id="graph">
+        <h1>INFO Box</h1>
+        <p></p>
+      </div>
+      <div id="stream"></div>
+    </div>
+    <div id="footer">VDP Servedio@CSH Vienna</div>
+  </div>
+  <script> main(); </script>
+</body>
+
+</html>
