@@ -85,12 +85,29 @@ function main() {
     .attr("stroke", "#58a6ff")
     .attr("stroke-width", 1.5);
 
+  const theoPath = heapsG.append("path")
+    .attr("fill", "none")
+    .attr("stroke", "#e3b341")
+    .attr("stroke-width", 1.5)
+    .attr("stroke-dasharray", "5 3");
+
+  // legend (appended last so it renders on top)
+  const lgG = heapsG.append("g").attr("transform", `translate(${hW - 74}, 1)`);
+  lgG.append("line").attr("x1", 0).attr("x2", 16).attr("y1", 5).attr("y2", 5)
+    .attr("stroke", "#58a6ff").attr("stroke-width", 1.5);
+  lgG.append("text").attr("x", 19).attr("y", 8)
+    .attr("fill", "#8b949e").attr("font-size", "9px").text("observed");
+  lgG.append("line").attr("x1", 0).attr("x2", 16).attr("y1", 15).attr("y2", 15)
+    .attr("stroke", "#e3b341").attr("stroke-width", 1.5).attr("stroke-dasharray", "5 3");
+  lgG.append("text").attr("x", 19).attr("y", 18)
+    .attr("fill", "#8b949e").attr("font-size", "9px").text("theory");
+
   // ── controls ─────────────────────────────────────────────────
   d3.select("#pauseB").on("click", togglePause);
   d3.select("#restartB").on("click", restart);
 
-  d3.select("#rhoValue").on("input", function () { rho = +this.value; });
-  d3.select("#nuValue").on("input", function () { nu = +this.value; });
+  d3.select("#rhoValue").on("input", function () { rho = +this.value; updateTheoLabel(); });
+  d3.select("#nuValue").on("input", function () { nu = +this.value; updateTheoLabel(); });
   d3.select("#speedValue").on("input", function () {
     const s = +this.value;
     d3.select("#speedDisplay").text(s);
@@ -132,6 +149,7 @@ function main() {
 
     pieG.selectAll("path.slice").remove();
     heapsPath.attr("d", null);
+    theoPath.attr("d", null);
     xSc.domain([1, 100]); ySc.domain([1, 10]);
     xAxisG.call(d3.axisBottom(xSc).ticks(3, "~s").tickSize(3));
     yAxisG.call(d3.axisLeft(ySc).ticks(3, "~s").tickSize(3));
@@ -139,6 +157,7 @@ function main() {
     d3.select("#stat-stream").text(0);
     d3.select("#stat-dict").text(0);
     d3.select("#stat-beta").text("—");
+    updateTheoLabel();
   }
 
   function stepUrn() {
@@ -242,7 +261,30 @@ function main() {
       .defined(d => d[0] > 0 && d[1] > 0);
     heapsPath.datum(display).attr("d", line);
 
-    // estimate Heaps exponent via log-log OLS
+    // ── theoretical curve ──────────────────────────────────────
+    if (nu > 0 && heapsData.length >= 5) {
+      // shape function f(n); D(n) ≈ C · f(n)
+      const f = (nu === rho)
+        ? ni => ni / Math.log(ni)          // ν = ρ:  n / ln(n)
+        : ni => Math.pow(ni, nu / rho);    // general: n^(ν/ρ)
+
+      // fit constant C via OLS without intercept: C = Σ(D·f) / Σ(f²)
+      // skip n = 1 to avoid log(1) = 0 division in the ν = ρ branch
+      const pts = heapsData.filter(d => d[0] > 1 && d[1] > 0);
+      const num = pts.reduce((s, [ni, Di]) => s + Di * f(ni), 0);
+      const den = pts.reduce((s, [ni])     => s + f(ni) * f(ni), 0);
+      const C = den > 0 ? num / den : 1;
+
+      const theoData = display
+        .filter(d => d[0] > 1)
+        .map(([ni]) => [ni, C * f(ni)]);
+
+      theoPath.datum(theoData).attr("d", line);
+    } else {
+      theoPath.attr("d", null);
+    }
+
+    // ── empirical β via log-log OLS ────────────────────────────
     if (heapsData.length >= 10) {
       const pts = heapsData.filter(d => d[0] > 0 && d[1] > 0);
       const m = pts.length;
@@ -254,6 +296,16 @@ function main() {
       const sx2 = lx.reduce((a, x) => a + x * x, 0);
       const beta = (m * sxy - sx * sy) / (m * sx2 - sx * sx);
       d3.select("#stat-beta").text(isFinite(beta) ? beta.toFixed(3) : "—");
+    }
+  }
+
+  function updateTheoLabel() {
+    if (nu <= 0) {
+      d3.select("#stat-beta-theo").text("—");
+    } else if (nu === rho) {
+      d3.select("#stat-beta-theo").text("n / ln n");
+    } else {
+      d3.select("#stat-beta-theo").text((nu / rho).toFixed(3));
     }
   }
 
