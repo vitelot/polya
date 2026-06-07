@@ -1,265 +1,327 @@
 function main() {
-  var width = 800,
-    height = 600,
-    rate = 800, // milliseconds
-    rho = 2, // reinforcement
-    nu = 1; // adjacent possible
 
-  var runningFlag = true;
-  var stream = [];
-  var ball = {}; // balls in the stream
-  var timer;
+  // ── dimensions ───────────────────────────────────────────────
+  const simW = 720, simH = 520;
+  const MAX_VISUAL = 180;   // cap on balls rendered in the force layout
+  const HEAPS_EVERY = 5;    // update Heaps chart every N steps
 
-// set canvas dimensions //
+  // ── parameters (updated by controls) ────────────────────────
+  let rho = 2, nu = 1;
+  let rate = speedToRate(2); // speed 2 → 800 ms, matches original default
+
+  // ── simulation state ─────────────────────────────────────────
+  let running = true, timer;
+  let urnCounts = {};          // color → # balls in urn   (math state)
+  let streamCounts = {};       // color → # times drawn    (for pie)
+  let streamSet = new Set();   // set of colors ever drawn (novelty check)
+  let dictionary = 0, n = 0;  // dict size, stream length
+  let heapsData = [];          // [[n, D], …]
+  let idx = 0;                 // unique visual-ball ID counter
+  let nodes = [];              // visual balls for force layout
+
+  // ── simulation SVG ───────────────────────────────────────────
   d3.select("#simulation")
-    .style("width", width + "px")
-    .style("height", height + "px");
+    .style("width", simW + "px")
+    .style("height", simH + "px");
 
-  d3.select("#buttons")
-    .style("height", (height/3-18) + "px");
+  const svg = d3.select("#simulation").append("svg")
+    .attr("width", simW).attr("height", simH)
+    .on("mousedown", togglePause);
 
-  d3.select("#graph")
-    .style("height", height/3 + "px");
+  svg.append("rect").attr("width", simW).attr("height", simH);
 
-  d3.select("#stream")
-    .style("height", height/3 + "px");
-///////////////////////////
-///// Buttons //////
-  d3.select("#pauseB")
-    .on("click", pauseSym);
+  // ── force simulation ─────────────────────────────────────────
+  const sim = d3.forceSimulation()
+    .force("charge", d3.forceManyBody().strength(-4))
+    .force("x", d3.forceX(simW / 2).strength(0.03))
+    .force("y", d3.forceY(simH / 2).strength(0.03))
+    .alphaDecay(0.02)
+    .on("tick", () => {
+      svg.selectAll(".node")
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y);
+    });
 
-  d3.select("#restartB")
-    .on("click", restartSym);
-////////////////////
-// inputs //
-  d3.select("#rhoValue").on("input", function() {
-    rho = +this.value;
+  // ── pie chart ────────────────────────────────────────────────
+  const PIE_SIZE = 190, PIE_R = PIE_SIZE / 2;
+
+  const pieG = d3.select("#stream").append("svg")
+    .attr("width", PIE_SIZE).attr("height", PIE_SIZE)
+    .append("g")
+    .attr("transform", `translate(${PIE_R},${PIE_R})`);
+
+  // ── Heaps' law chart ─────────────────────────────────────────
+  const hm = { top: 10, right: 14, bottom: 30, left: 38 };
+  const hW = 270 - hm.left - hm.right;
+  const hH = 130 - hm.top - hm.bottom;
+
+  const heapsSvg = d3.select("#heaps").append("svg")
+    .attr("width", hW + hm.left + hm.right)
+    .attr("height", hH + hm.top + hm.bottom);
+  const heapsG = heapsSvg.append("g")
+    .attr("transform", `translate(${hm.left},${hm.top})`);
+
+  let xSc = d3.scaleLog().clamp(true).domain([1, 100]).range([0, hW]);
+  let ySc = d3.scaleLog().clamp(true).domain([1, 10]).range([hH, 0]);
+
+  const xAxisG = heapsG.append("g").attr("class", "heaps-axis")
+    .attr("transform", `translate(0,${hH})`);
+  const yAxisG = heapsG.append("g").attr("class", "heaps-axis");
+
+  heapsG.append("text")
+    .attr("x", hW / 2).attr("y", hH + 24)
+    .attr("text-anchor", "middle")
+    .attr("fill", "#8b949e").attr("font-size", "10px")
+    .text("stream size  n");
+  heapsG.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -hH / 2).attr("y", -30)
+    .attr("text-anchor", "middle")
+    .attr("fill", "#8b949e").attr("font-size", "10px")
+    .text("D(n)");
+
+  const heapsPath = heapsG.append("path")
+    .attr("fill", "none")
+    .attr("stroke", "#58a6ff")
+    .attr("stroke-width", 1.5);
+
+  // ── controls ─────────────────────────────────────────────────
+  d3.select("#pauseB").on("click", togglePause);
+  d3.select("#restartB").on("click", restart);
+
+  d3.select("#rhoValue").on("input", function () { rho = +this.value; });
+  d3.select("#nuValue").on("input", function () { nu = +this.value; });
+  d3.select("#speedValue").on("input", function () {
+    const s = +this.value;
+    d3.select("#speedDisplay").text(s);
+    rate = speedToRate(s);
+    if (running) { clearInterval(timer); timer = setInterval(tick, rate); }
   });
-  d3.select("#nuValue").on("input", function() {
-    nu = +this.value;
-  });
-  d3.select("#rateValue").on("input", function() {
-    rate = +this.value;
-    clearInterval(timer);
-    if(runningFlag) timer = setInterval(run, rate);
-  });
-////////////
 
-  var svg = d3.select("#simulation").append("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .on("mousedown", pauseSym);
+  // ── start ────────────────────────────────────────────────────
+  startup();
+  timer = setInterval(tick, rate);
 
-  svg.append("rect")
-    .attr("width", width)
-    .attr("height", height)
-    .attr("stroke", "#000");
+  // ─────────────────────────────────────────────────────────────
 
-    var divstreamwidth = parseInt(d3.select("#stream").style("width")),
-        divstreamheight= parseInt(d3.select("#stream").style("height")),
-        raggio = Math.min(divstreamheight, divstreamwidth)/2;
-
-    var vis = d3.select("#stream")
-      .append("svg:svg") //create the SVG element inside the div#stream
-      .attr("width", divstreamwidth)           //set the width and height of our visualization (these will be attributes of the <svg> tag
-      .attr("height", divstreamheight)
-      .append("svg:g")                //make a group to hold our pie chart
-      .attr("transform", "translate(" + raggio + "," + raggio + ")");    //move the center of the pie chart from 0, 0 to radius, radius
-
-    var force, node, nodes;
-    var tickcounter = 0,
-        dictionary = 0,
-        idx = 0;
-
-    startup();
-    timer = setInterval(run, rate);
-
-  function run() {
-    urnDynamics();
-    pieDynamics();
+  function tick() {
+    stepUrn();
+    updatePie();
+    if (n % HEAPS_EVERY === 0) updateHeaps();
   }
 
   function startup() {
+    const red = "#FF0000";
+    urnCounts = { [red]: 1 };
+    streamCounts = {};
+    streamSet = new Set();
+    dictionary = 0; n = 0; idx = 1;
+    heapsData = [];
+    nodes = [{ idx: 0, x: simW / 2, y: simH / 2, color: red, vx: 0, vy: 0 }];
 
-      force = d3.layout.force()
-        .size([width, height])
-        .nodes([{
-          idx: 0,
-          x: 0,
-          y: 0,
-          color: "#FF0000"
-        }]) // initialize with 1 node
-        .charge(-5)
-        .gravity(0.05)
-        .on("tick", tick);
+    svg.selectAll(".node").remove();
+    svg.selectAll(".node")
+      .data(nodes, d => d.idx)
+      .join(enter => enter.append("circle")
+        .attr("class", d => "node class_" + d.color.slice(1))
+        .attr("id", d => "idx_" + d.idx)
+        .attr("r", 5)
+        .attr("fill", d => d.color));
 
-      nodes = force.nodes();
-      node = svg.selectAll(".node");
+    sim.nodes(nodes).alpha(1).restart();
 
-      ball[nodes[0].color] = 0; // still not in the stream
+    pieG.selectAll("path.slice").remove();
+    heapsPath.attr("d", null);
+    xSc.domain([1, 100]); ySc.domain([1, 10]);
+    xAxisG.call(d3.axisBottom(xSc).ticks(3, "~s").tickSize(3));
+    yAxisG.call(d3.axisLeft(ySc).ticks(3, "~s").tickSize(3));
 
-    tickcounter = dictionary = idx = 0;
+    d3.select("#stat-stream").text(0);
+    d3.select("#stat-dict").text(0);
+    d3.select("#stat-beta").text("—");
   }
 
-  function urnDynamics() {
-    var r = Math.floor(Math.random() * nodes.length), // get a random element
-      rcol = nodes[r].color, // pick its color
-      index = nodes[r].idx; // and its index
-    var i;
+  function stepUrn() {
+    const rcol = sampleUrn();
 
-    d3.select("#idx_"+index)
-      .transition()
-        .duration(300)
-        .attr('r', 15)
-      .transition()
-        .duration(300)
-        .attr('r', 5);
-
-
-    tickcounter++;
-    // insert rho copies of it in the urn
-    for (i = 0; i < rho; i++) {
-      idx++;
-      r = height * Math.random();
-      nodes.push({
-        idx: idx, // each ball in the urn gets a unique ID
-        x: 0,
-        y: r,
-        color: rcol
-      });
+    // pulse a visual ball of the drawn color
+    const hits = nodes.filter(nd => nd.color === rcol);
+    if (hits.length) {
+      const t = hits[Math.floor(Math.random() * hits.length)];
+      d3.select("#idx_" + t.idx)
+        .transition().duration(220).attr("r", 13)
+        .transition().duration(220).attr("r", 5);
     }
 
-    if (stream.indexOf(rcol) < 0) {
-      // it is a new element
-      dictionary++;
-      // insert nu+1 new colored balls in the urn
-      for (i = 0; i <= nu; i++) {
+    n++;
 
-        do {
-          var newcol = getRandomColor();
-        } while (stream.indexOf(newcol)>=0); // be sure it is a new color
-        idx++;
-        r = height * Math.random();
-        nodes.push({
-          idx: idx,
-          x: width,
-          y: r,
-          color: newcol
-        });
-        ball[newcol] = 0; // still not in the stream
+    // reinforcement: add ρ copies to urn (and to canvas if under cap)
+    urnCounts[rcol] += rho;
+    for (let i = 0; i < rho; i++) addVisual(rcol, 0, simH * Math.random());
+
+    if (!streamSet.has(rcol)) {
+      // novel color: expand adjacent possible
+      dictionary++;
+      for (let i = 0; i <= nu; i++) {
+        const nc = freshColor();
+        urnCounts[nc] = 1;
+        streamCounts[nc] = 0;
+        addVisual(nc, simW, simH * Math.random());
       }
     }
 
-    // insert it in the stream
-    stream.push(rcol);
-    ball[rcol]++;
-    // update info
-    d3.select("#graph p")
-      .html("stream size: " + tickcounter + "<br/>" +
-              "dictionary: " + dictionary);
+    streamSet.add(rcol);
+    streamCounts[rcol] = (streamCounts[rcol] || 0) + 1;
+    heapsData.push([n, dictionary]);
 
-    node = node.data(nodes);
+    d3.select("#stat-stream").text(n);
+    d3.select("#stat-dict").text(dictionary);
 
-    node.enter().append("circle")
-      .attr("class", function(d) { return "node class_" + d.color.substr(1)})
-      .attr("id", function(d) { return "idx_"+d.idx})
-      .attr("r", 5)
-      .attr("fill", function(d) { return d.color })
-      .append("svg:title")
-      .text(function(d) { return d.color; });
+    // sync force simulation and DOM
+    sim.nodes(nodes).alpha(0.2).restart();
 
-    force.start();
+    svg.selectAll(".node")
+      .data(nodes, d => d.idx)
+      .join(enter => enter.append("circle")
+        .attr("class", d => "node class_" + d.color.slice(1))
+        .attr("id", d => "idx_" + d.idx)
+        .attr("r", 5)
+        .attr("fill", d => d.color)
+        .call(sel => sel.append("title").text(d => d.color)));
   }
 
-  function pieDynamics() {
-    var piedata = d3.entries(ball);
-    var pie = d3.layout.pie()
-	     .value(function(d) { return d.value; })(piedata);
-    var arc = d3.svg.arc()              //this will create <path> elements for us using arc data
-        .innerRadius(30)
-        .outerRadius(raggio-10);
-
-    vis.data(piedata); //associate our data with the document
-
-    vis.selectAll("g.slice") //this selects all <g> elements with class slice (there aren't any yet)
-      .remove(); // removes all and get ready for replot
-    vis.selectAll(".pieTooltip")
-      .remove();
-
-    var arcs = vis.selectAll("g.slice")
-       .data(pie)  //associate the generated pie data (an array of arcs, each having startAngle, endAngle and value properties)
-       .enter() //this will create <g> elements for every "extra" data element that should be associated with a selection. The result is creating a <g> for every object in the data array
-       .append("svg:g") //create a group to hold each slice (we will have a <path> and a <text> element associated with each slice)
-       .attr("class", "slice") //allow us to style things in the slices (like text)
-       .append("svg:path")
-       .attr("fill", function(d) { return d.data.key; }) //set the color for each slice to be chosen from the color function defined above
-       .attr("d", arc) //this creates the actual SVG path using the associated data (pie) with the arc drawing function
-       .on("mouseover", highlight)
-       .on("mouseout", downlight)
-       .append("svg:title")
-       .text(function(d){return d.data.key + ": " + d.data.value;});
-
+  function addVisual(color, x, y) {
+    if (nodes.length >= MAX_VISUAL) return;
+    nodes.push({ idx: idx++, x, y, color, vx: x === 0 ? 0.5 : -0.5, vy: 0 });
   }
 
-  function pauseSym() {
-    if (runningFlag) {
-      clearInterval(timer);
-      runningFlag = false;
-    } else {
-      timer = setInterval(run, rate);
-      runningFlag = true;
+  // ── pie chart (proper data join — no full remove/re-add) ──────
+  function updatePie() {
+    const entries = Object.entries(streamCounts)
+      .filter(([, v]) => v > 0)
+      .map(([key, value]) => ({ key, value }));
+    if (!entries.length) return;
+
+    const pie = d3.pie().value(d => d.value).sort(null)(entries);
+    const arc = d3.arc().innerRadius(26).outerRadius(PIE_R - 8);
+
+    const paths = pieG.selectAll("path.slice")
+      .data(pie, d => d.data.key);
+
+    const entered = paths.enter().append("path")
+      .attr("class", "slice")
+      .attr("fill", d => d.data.key)
+      .attr("stroke", "#0d1117").attr("stroke-width", 1)
+      .on("mouseover", (_, d) => highlight(d.data.key))
+      .on("mouseout",  (_, d) => downlight(d.data.key));
+    entered.append("title");
+
+    paths.merge(entered)
+      .attr("d", arc)
+      .select("title")
+      .text(d => `${d.data.key}: ${d.data.value}`);
+
+    paths.exit().remove();
+  }
+
+  // ── Heaps' law chart ─────────────────────────────────────────
+  function updateHeaps() {
+    if (heapsData.length < 3) return;
+
+    xSc.domain([1, Math.max(10, n)]);
+    ySc.domain([1, Math.max(3, dictionary)]);
+    xAxisG.call(d3.axisBottom(xSc).ticks(3, "~s").tickSize(3));
+    yAxisG.call(d3.axisLeft(ySc).ticks(3, "~s").tickSize(3));
+
+    // downsample for rendering performance when many points
+    const stride = Math.max(1, Math.floor(heapsData.length / 400));
+    const display = heapsData.filter((_, i) => i % stride === 0);
+
+    const line = d3.line()
+      .x(d => xSc(d[0])).y(d => ySc(d[1]))
+      .defined(d => d[0] > 0 && d[1] > 0);
+    heapsPath.datum(display).attr("d", line);
+
+    // estimate Heaps exponent via log-log OLS
+    if (heapsData.length >= 10) {
+      const pts = heapsData.filter(d => d[0] > 0 && d[1] > 0);
+      const m = pts.length;
+      const lx = pts.map(d => Math.log(d[0]));
+      const ly = pts.map(d => Math.log(d[1]));
+      const sx  = lx.reduce((a, b) => a + b, 0);
+      const sy  = ly.reduce((a, b) => a + b, 0);
+      const sxy = lx.reduce((a, x, i) => a + x * ly[i], 0);
+      const sx2 = lx.reduce((a, x) => a + x * x, 0);
+      const beta = (m * sxy - sx * sy) / (m * sx2 - sx * sx);
+      d3.select("#stat-beta").text(isFinite(beta) ? beta.toFixed(3) : "—");
     }
   }
 
-  function restartSym() {
+  // ── helpers ───────────────────────────────────────────────────
+
+  // weighted random sample from urn
+  function sampleUrn() {
+    const cols  = Object.keys(urnCounts);
+    const total = cols.reduce((s, c) => s + urnCounts[c], 0);
+    let r = Math.random() * total;
+    for (const c of cols) {
+      r -= urnCounts[c];
+      if (r <= 0) return c;
+    }
+    return cols[cols.length - 1]; // floating-point safety fallback
+  }
+
+  // generate a hex color not yet in the urn
+  function freshColor() {
+    let c;
+    do { c = randColor(); } while (urnCounts[c]);
+    return c;
+  }
+
+  function togglePause() {
+    if (running) {
+      clearInterval(timer); running = false;
+      d3.select("#pauseB").text("Resume");
+    } else {
+      timer = setInterval(tick, rate); running = true;
+      d3.select("#pauseB").text("Pause");
+    }
+  }
+
+  function restart() {
     clearInterval(timer);
-    runningFlag = true;
-    stream = [];
-    ball = {};
-    d3.selectAll("circle")
-      .transition()
-        .duration(300)
-        .attr('r', 8)
-      .transition()
-        .duration(2500)
-        .attr('r', 0)
-        .style('opacity', 0)
-      .each('end', function() { // use on() from version 4
-          d3.select(this).remove();
-        });
+    sim.stop();
+    running = true;
+    d3.select("#pauseB").text("Pause");
 
-    setTimeout(function () {
-      d3.selectAll(".node").remove();
+    svg.selectAll(".node")
+      .transition().duration(300).attr("r", 8)
+      .transition().duration(1500).attr("r", 0).style("opacity", 0)
+      .on("end", function () { d3.select(this).remove(); });
+
+    setTimeout(() => {
+      svg.selectAll(".node").remove();
       startup();
-      timer = setInterval(run, rate);
+      timer = setInterval(tick, rate);
     }, 2000);
-
-  }
-
-  function tick() {
-    node.attr("cx", function(d) {
-        return d.x;
-      })
-      .attr("cy", function(d) {
-        return d.y;
-      });
   }
 }
 
-function highlight(d,i) {
-  d3.selectAll(".class_"+d.data.key.substr(1))
-    .attr("r", 10);
+// ── highlight balls matching a pie slice on hover ─────────────
+function highlight(color) {
+  d3.selectAll(".class_" + color.slice(1)).attr("r", 10);
 }
-function downlight(d,i) {
-  d3.selectAll(".class_"+d.data.key.substr(1))
-    .attr("r", 5);
+function downlight(color) {
+  d3.selectAll(".class_" + color.slice(1)).attr("r", 5);
 }
 
-function getRandomColor() {
-  var letters = '0123456789ABCDEF';
-  var color = '#';
-  for (var i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
-  }
-  return color;
+// speed 1–8 → delay in ms; speed 2 = 800 ms (original default)
+function speedToRate(speed) {
+  return Math.round(1600 / speed);
+}
+
+function randColor() {
+  let c = "#";
+  for (let i = 0; i < 6; i++) c += "0123456789ABCDEF"[Math.floor(Math.random() * 16)];
+  return c;
 }

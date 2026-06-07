@@ -1,85 +1,230 @@
+/* ── reset / base ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --bg:        #0d1117;
+  --surface:   #161b22;
+  --border:    #30363d;
+  --accent:    #58a6ff;
+  --text:      #c9d1d9;
+  --muted:     #8b949e;
+  --btn-bg:    #21262d;
+  --btn-hover: #30363d;
+  --radius:    6px;
+}
+
 body {
-  margin:0;
-  padding:0;
-  color: #000;
-  background: #a7a09a;
-}
-
-#wrapper {
-  width: 1020px;
-  margin:5px;
-}
-
-#header h1{
-  text-align: center;
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--text);
   font-family: 'Josefin Sans', sans-serif;
+  font-size: 14px;
+}
+
+/* ── wrapper ──────────────────────────────────────────────── */
+#wrapper {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 14px 16px;
+}
+
+/* ── header ───────────────────────────────────────────────── */
+#header h1 {
+  text-align: center;
+  font-weight: 600;
+  font-size: 1.45rem;
+  color: var(--accent);
+  margin: 0 0 6px;
+  letter-spacing: 0.06em;
 }
 
 #description {
   font-family: 'Indie Flower', cursive;
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 860px;
+  margin: 0 auto 14px;
 }
 
+#description a        { color: var(--accent); text-decoration: none; }
+#description a:hover  { text-decoration: underline; }
+
+/* ── main layout ──────────────────────────────────────────── */
+#main {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* ── simulation canvas ────────────────────────────────────── */
 #simulation {
-  float:left;
-  background: url(texture-noise.png);
-  margin: 5px;
-  /* set in main.js
-  width: 800px;
-  height: 600px;*/
+  flex: 0 0 auto;
+  background: url(texture-noise.png) repeat;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
 }
 
-#sidebar {
-  margin-right: 1px;
-  float:right;
-  width: 200px;
-}
-
-#buttons {
-  margin: 1px;
-  text-align: center;
-  /*border-style: solid;
-  border-width: thin;*/
-}
-#graph {
-  margin: 1px;
-  background: #aaa;
-  /*height: 300px;*/
-  border-style: solid;
-  border-width: thin;
-}
-#stream {
-  margin: 1px;
-  background: #888;
-  /*height: 300px;*/
-  border-style: solid;
-  border-width: thin;
-}
-#buttons button {
-  width: 50%;
-  font-size: 14px;
-  border-radius: 5px;
-  outline: none;
-}
-#graph h1 {
-  font-size: 16px;
-  text-align: center;
-}
-#graph p {
-  padding-left: 1em;
-}
-
-#footer {
-  clear: both;
-  text-align: center;
-  font-size: 12px;
-}
-
-rect {
+#simulation rect {
   fill: none;
   pointer-events: all;
 }
 
 .node {
-  /*fill: #000;*/
-  stroke: black;
+  stroke: rgba(0,0,0,0.35);
+  stroke-width: 0.8px;
+}
+
+/* ── sidebar ──────────────────────────────────────────────── */
+#sidebar {
+  flex: 1 1 0;
+  min-width: 260px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── controls panel ───────────────────────────────────────── */
+#controls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.control-row label {
+  flex: 1;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-left: 4px;
+}
+
+.control-row input[type="number"] {
+  width: 54px;
+  padding: 3px 6px;
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.875rem;
+  text-align: center;
+  outline: none;
+}
+
+.control-row input[type="number"]:focus {
+  border-color: var(--accent);
+}
+
+.slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.slider-wrap input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+#speedDisplay {
+  width: 18px;
+  text-align: right;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.btn-row button {
+  flex: 1;
+  padding: 6px 0;
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.btn-row button:hover  { background: var(--btn-hover); }
+.btn-row button:active { background: var(--border); }
+
+#stats {
+  border-top: 1px solid var(--border);
+  padding-top: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+.stat-label { color: var(--muted); }
+.stat strong { color: var(--text); font-weight: 600; }
+
+/* ── info panels (pie + heaps) ────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+}
+
+#stream {
+  display: flex;
+  justify-content: center;
+}
+
+#heaps {
+  display: flex;
+  justify-content: center;
+}
+
+/* ── Heaps axes ───────────────────────────────────────────── */
+.heaps-axis text  { fill: var(--muted); font-size: 9px; }
+.heaps-axis line,
+.heaps-axis path  { stroke: var(--border); }
+
+/* ── footer ───────────────────────────────────────────────── */
+#footer {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted);
 }

@@ -1,75 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
-  <title>Polya's urn with innovations</title>
-  <script src="https://d3js.org/d3.v3.min.js"></script>
-  <script src="./main.js"></script>
-  <link href="https://fonts.googleapis.com/css?family=Indie+Flower|Josefin+Sans" rel="stylesheet">
-  <link type="text/css" rel="stylesheet" href="inno.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Polya's Urn with Innovations</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;600&family=Indie+Flower&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="inno.css">
 </head>
 
 <body>
   <div id="wrapper">
     <div id="header">
-      <h1>Polya's urn with innovations</h1>
+      <h1>Polya's Urn with Innovations</h1>
       <div id="description">
         <p>
-          This visualisation represents the simplest form of the innovation model
-          introduced in
-          <a href="http://www.nature.com/srep/2014/140731/srep05890/full/srep05890.html">
-            Scientific Reports 4, 5890 (2014)</a>.<br>
-
-          An urn initially contains a red ball.
-          At each time step a ball is randomly extracted with equal probability from the urn.
-          Its color is registered in the stream, whose histogram is here represented as a pie chart.
-          If that color was never observed before, i.e. it is not yet present in the stream,
-          nu+1 balls with each a brand new color, are added into the urn thus building
-          the "adjacent possible".
-          Independently, rho exact copies of the extracted ball are added to the urn.<br>
-          The randomly chosen ball is the pulsing one; the balls with brand new colors
-          enter the scene from the right side of the simulation; the copies of the balls
-          with an already observed color enter from the left side.
+          Visualisation of the innovation model from
+          <a href="http://www.nature.com/srep/2014/140731/srep05890/full/srep05890.html" target="_blank">
+            Tria et al., <em>Scientific Reports</em> 4, 5890 (2014)</a>.
+          An urn starts with one red ball. Each step: a ball is drawn at random;
+          <strong>ρ</strong> copies are returned (reinforcement); if the color is novel,
+          <strong>ν+1</strong> brand-new balls expand the <em>adjacent possible</em>.
+          The pulsing ball is the one drawn; new colors enter from the right, copies from the left.
         </p>
       </div>
     </div>
-    <div id="simulation">
-    </div>
-    <div id="sidebar">
-      <div id="buttons">
 
-        <p><button id="pauseB">Pause</button></p>
-        <p>
-          <label for="rhoValue">
-                 rho =
-          </label>
-          <input type="number" min="1" max="6" step="1" value="2" id="rhoValue">
-        <!-- </p>
-        <p> -->
-          <label for="nuValue">
-                 nu =
-          </label>
-          <input type="number" min="-1" max="6" step="1" value="1" id="nuValue">
-        </p>
-        <p>
-          <label for="rateValue">
-                 rate =
-          </label>
-          <input type="number" min="200" max="2000" step="100" value="800" id="rateValue">
-        </p>
-        <p><button id="restartB">Restart</button></p>
+    <div id="main">
+      <div id="simulation"></div>
+
+      <div id="sidebar">
+
+        <div id="controls">
+          <div class="control-row">
+            <label for="rhoValue">ρ <span class="hint">reinforcement</span></label>
+            <input type="number" min="1" max="6" step="1" value="2" id="rhoValue">
+          </div>
+          <div class="control-row">
+            <label for="nuValue">ν <span class="hint">adjacent possible</span></label>
+            <input type="number" min="-1" max="6" step="1" value="1" id="nuValue">
+          </div>
+          <div class="control-row">
+            <label for="speedValue">Speed <span class="hint">steps/sec</span></label>
+            <div class="slider-wrap">
+              <input type="range" min="1" max="8" step="1" value="2" id="speedValue">
+              <span id="speedDisplay">2</span>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button id="pauseB">Pause</button>
+            <button id="restartB">Restart</button>
+          </div>
+          <div id="stats">
+            <div class="stat"><span class="stat-label">stream</span><strong id="stat-stream">0</strong></div>
+            <div class="stat"><span class="stat-label">dictionary</span><strong id="stat-dict">0</strong></div>
+            <div class="stat"><span class="stat-label">Heaps β (emp.)</span><strong id="stat-beta">—</strong></div>
+          </div>
+        </div>
+
+        <div class="panel" id="stream-panel">
+          <h2>Color Frequencies</h2>
+          <div id="stream"></div>
+        </div>
+
+        <div class="panel" id="heaps-panel">
+          <h2>Heaps' Law  <span class="hint">log-log</span></h2>
+          <div id="heaps"></div>
+        </div>
 
       </div>
-      <div id="graph">
-        <h1>INFO Box</h1>
-        <p></p>
-      </div>
-      <div id="stream"></div>
     </div>
-    <div id="footer">VDP Servedio@CSH Vienna</div>
+
+    <div id="footer">VDP Servedio · CSH Vienna</div>
   </div>
-  <script> main(); </script>
+
+  <script src="./main.js"></script>
+  <script>main();</script>
 </body>
 
 </html>
